@@ -29,6 +29,12 @@ Public Grotto skills page:
 
 https://www.enterthegrotto.xyz/skills
 
+Live Grotto API docs:
+
+https://api.enterthegrotto.xyz/docs
+
+This repo is the canonical public source for skill markdown. Website download links should point at the raw files in this repo instead of maintaining separate markdown copies.
+
 ## Repository layout
 
 ```text
