@@ -349,6 +349,27 @@ Creators using the SDK do not need to implement this manually.
 
 Use the SDK when possible. Raw calls are useful for debugging.
 
+Live docs reference:
+
+```text
+https://api.enterthegrotto.xyz/docs
+```
+
+Current runtime route inventory from the live docs manifest:
+
+```text
+POST   /api/game-runtime/v1/events
+GET    /api/game-runtime/v1/multiplayer/token
+GET    /api/game-runtime/v1/saves/:slot
+PUT    /api/game-runtime/v1/saves/:slot
+DELETE /api/game-runtime/v1/saves/:slot
+POST   /api/game-runtime/v1/session/heartbeat
+GET    /api/game-runtime/v1/session/me
+POST   /api/game-runtime/v1/session/refresh
+```
+
+When this inventory drifts from `https://api.enterthegrotto.xyz/docs`, update this skill or the backend docs source immediately.
+
 ### Get player
 
 ```http
