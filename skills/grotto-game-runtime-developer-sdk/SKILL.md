@@ -1,13 +1,13 @@
 ---
 name: grotto-game-runtime-developer-sdk
-description: Distributable guide for game creators building Grotto-hosted HTML5 and WebGL games with trusted player identity, cloud saves, leaderboards, token-gated inventory unlocks, GitHub-backed version control/testing through hosted wrappers, autosave, events, presence, and future multiplayer via the Grotto Runtime SDK. Recommends Railway or Supabase for custom game cloud backends.
-version: 1.3.0
+description: Core Runtime SDK guide for Grotto-hosted HTML5/WebGL games: trusted player identity, cloud saves, autosave, events, presence, and runtime troubleshooting. Links to specialist skills for token-gated inventory and GitHub-hosted game workflows.
+version: 1.4.0
 author: Bob AI Mk. I
 license: MIT
 metadata:
   hermes:
-    tags: [grotto, game-dev, runtime-sdk, cloud-saves, leaderboards, auth, token-gating, inventory, indexer, github, version-control, testing, multiplayer, html5, webgl, railway, supabase]
-    related_skills: [grotto-html5-game-build-system, grotto-game-api-save-system]
+    tags: [grotto, game-dev, runtime-sdk, cloud-saves, leaderboards, auth, multiplayer, html5, webgl, railway, supabase]
+    related_skills: [grotto-html5-game-build-system, grotto-game-api-save-system, grotto-game-token-gated-inventory, grotto-hosted-game-github-workflow]
 ---
 
 # Grotto Game Runtime Developer SDK
@@ -246,219 +246,19 @@ Example response:
 
 Use this for display and personalization. For authoritative progression, still store state through `grotto.save()`.
 
-## Indexer-backed inventory and token-gated skins
+## Advanced: token-gated inventory
 
-Use this when a game needs to unlock a cosmetic, level, item, or skin if the player holds a specific Grotto NFT, ERC1155 asset, game pass, or external collection token.
-
-The trust chain should be:
-
-1. Get the player from the Grotto runtime session.
-2. Resolve every wallet address associated with that player.
-3. Query the Grotto inventory API for each associated wallet.
-4. Let the game unlock the skin if any associated wallet holds the required contract/token.
-
-The inventory API is backed by the Grotto indexer. Client games should normally call the Grotto API facade, not the raw indexer service directly, because direct indexer access may require server-side credentials and should not expose API keys inside game files.
-
-Relevant live docs:
+For NFT/ERC1155/ERC721/game-pass/asset ownership checks, associated wallet inventory lookup, token-gated skins, and server-authoritative entitlement patterns, use:
 
 ```text
-https://api.enterthegrotto.xyz/docs
+grotto-game-token-gated-inventory
+```
+
+Runtime SDK provides trusted player identity. The specialist skill explains how to combine that identity with indexer-backed inventory APIs such as:
+
+```text
 GET /api/inventory/:wallet?include_erc721=true
-GET /api/inventory/games/:wallet
-GET /api/inventory/passes/:wallet
 ```
-
-### Tutorial: token-gate the Obsidian Knight skin behind an NFT
-
-Assume the requirement is:
-
-```js
-const OBSIDIAN_KNIGHT_GATE = {
-  contractAddress: '0x1234567890abcdef1234567890abcdef12345678',
-  tokenId: '7',
-};
-```
-
-The player should receive the `obsidian-knight` skin if **any wallet associated with their Grotto account** owns that token.
-
-Step 1: get associated wallet addresses from the runtime session.
-
-```js
-function normalizeWallet(address) {
-  if (typeof address !== 'string') return null;
-  const normalized = address.trim().toLowerCase();
-  return /^0x[a-f0-9]{40}$/.test(normalized) ? normalized : null;
-}
-
-function getAssociatedWalletsFromSession(session) {
-  const player = session?.player || {};
-
-  // Keep this tolerant because the runtime contract can expose associated wallets
-  // under different names as the platform evolves. At minimum, current sessions
-  // expose player.walletAddress.
-  const candidates = [
-    player.walletAddress,
-    ...(player.associatedWalletAddresses || []),
-    ...(player.linkedWalletAddresses || []),
-    ...(player.walletAddresses || []),
-  ];
-
-  return [...new Set(candidates.map(normalizeWallet).filter(Boolean))];
-}
-```
-
-Step 2: fetch indexer-backed inventory for each associated wallet.
-
-```js
-async function fetchWalletInventory(wallet) {
-  const url = new URL(`https://api.enterthegrotto.xyz/api/inventory/${wallet}`);
-  url.searchParams.set('include_erc721', 'true');
-  url.searchParams.set('limit', '500');
-
-  const response = await fetch(url.toString(), {
-    headers: { Accept: 'application/json' },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Inventory lookup failed for ${wallet}: ${response.status}`);
-  }
-
-  return response.json();
-}
-
-async function fetchAssociatedInventories(wallets) {
-  const results = await Promise.allSettled(wallets.map(fetchWalletInventory));
-  return results
-    .filter((result) => result.status === 'fulfilled')
-    .map((result) => result.value);
-}
-```
-
-Step 3: match the required token across assets, asset packs, game passes, games, ERC721 NFTs, and unregistered tokens.
-
-```js
-function tokenMatches(item, gate) {
-  const wantedContract = gate.contractAddress.toLowerCase();
-  const wantedTokenId = String(gate.tokenId);
-
-  const candidates = [
-    item,
-    item.asset,
-    item.pack,
-    item.game,
-  ].filter(Boolean);
-
-  return candidates.some((candidate) => {
-    const contract = String(
-      candidate.contractAddress ||
-      candidate.collection_address ||
-      candidate.license_address ||
-      ''
-    ).toLowerCase();
-
-    const tokenId = String(
-      candidate.tokenId ||
-      candidate.token_id ||
-      item.tokenId ||
-      item.token_id ||
-      ''
-    );
-
-    return contract === wantedContract && tokenId === wantedTokenId;
-  });
-}
-
-function inventoryHasToken(inventory, gate) {
-  const groups = [
-    inventory.games || [],
-    inventory.gamePasses || [],
-    inventory.assetPacks || [],
-    inventory.assets || [],
-    inventory.nfts || [],
-    inventory.unregistered || [],
-  ];
-
-  return groups.some((items) => items.some((item) => tokenMatches(item, gate)));
-}
-```
-
-Step 4: unlock the skin in-game.
-
-```js
-const SKIN_ID = 'obsidian-knight';
-const OBSIDIAN_KNIGHT_GATE = {
-  contractAddress: '0x1234567890abcdef1234567890abcdef12345678',
-  tokenId: '7',
-};
-
-async function unlockTokenGatedSkins(grotto, gameState) {
-  const session = await grotto.getPlayer();
-  const wallets = getAssociatedWalletsFromSession(session);
-
-  if (wallets.length === 0) {
-    return { unlocked: false, reason: 'NO_ASSOCIATED_WALLETS' };
-  }
-
-  const inventories = await fetchAssociatedInventories(wallets);
-  const hasRequiredToken = inventories.some((inventory) =>
-    inventoryHasToken(inventory, OBSIDIAN_KNIGHT_GATE)
-  );
-
-  if (!hasRequiredToken) {
-    gameState.unlockedSkins = gameState.unlockedSkins.filter((skin) => skin !== SKIN_ID);
-    return { unlocked: false, reason: 'TOKEN_NOT_HELD' };
-  }
-
-  gameState.unlockedSkins = [...new Set([...(gameState.unlockedSkins || []), SKIN_ID])];
-  await grotto.save('default', gameState);
-  await grotto.event('skin_unlocked', {
-    skinId: SKIN_ID,
-    gate: 'nft_holding',
-    contractAddress: OBSIDIAN_KNIGHT_GATE.contractAddress,
-    tokenId: OBSIDIAN_KNIGHT_GATE.tokenId,
-  });
-
-  return { unlocked: true, skinId: SKIN_ID };
-}
-```
-
-Step 5: call it during boot after loading the cloud save.
-
-```js
-async function boot() {
-  const grotto = await GrottoRuntime.ready({ timeoutMs: 10000 });
-  const save = await grotto.loadSave('default', DEFAULT_STATE);
-  gameState = save.state;
-
-  const gateResult = await unlockTokenGatedSkins(grotto, gameState);
-  if (gateResult.unlocked) {
-    showToast('Obsidian Knight skin unlocked');
-  }
-
-  startGame();
-}
-```
-
-### Server-authoritative token gates
-
-Client-side token gates are fine for cosmetics and UX. Do **not** use client-only inventory checks for prizes, paid rewards, ranked advantages, or tradeable unlocks.
-
-For anything valuable:
-
-1. The game calls your Railway or Supabase-backed game server.
-2. Your game server verifies the Grotto runtime session with the Grotto API or an approved server-side endpoint.
-3. Your game server fetches indexer-backed inventory for the runtime player and associated wallets.
-4. Your game server decides whether to grant the unlock.
-5. The client only receives the final entitlement result.
-
-Never put indexer API keys, admin keys, Supabase service-role keys, or reward-minting secrets in browser game files.
-
-### Caching guidance
-
-- Cache inventory checks for a short period, usually 30 to 120 seconds.
-- Re-check on boot, wallet/account switch, and before granting a valuable server-side reward.
-- Do not permanently save ownership-gated entitlements without a way to revoke them if the player transfers the token.
-- For pure cosmetics, it is acceptable to hide the skin when the token is no longer present.
 
 ## Events
 
@@ -559,208 +359,15 @@ window.parent.postMessage({ type: 'grotto:runtime:hello' }, '*');
 
 Creators using the SDK do not need to implement this manually.
 
-## GitHub-backed version control and fast updates with a hosted game client
+## Advanced: GitHub-hosted game client workflow
 
-Use this deployment pattern when a game needs quick iteration, maintainable version control, automated testing, or CI/CD without re-uploading the full game build to The Grotto every time.
-
-The method:
-
-1. Put the real game client in a GitHub repo.
-2. Deploy that game client to a host like Railway, Vercel, Netlify, Cloudflare Pages, or another HTTPS server.
-3. Configure the host to auto-deploy from `main` or from release tags.
-4. Upload only a small Grotto wrapper `index.html` that embeds the hosted game client in an iframe.
-5. Have the wrapper forward the Grotto runtime handshake into the hosted iframe.
-
-This gives creators:
-
-- normal Git history, branches, pull requests, review, and rollback
-- automated tests before deploy
-- preview environments for QA
-- fast client updates by merging GitHub PRs
-- less need to re-upload a zip to The Grotto for every small bugfix
-- a stable Grotto game page that points to the latest hosted client
-
-### Recommended repo layout
+For quick updates, version control, CI tests, preview deploys, Railway/Vercel hosted clients, and small Grotto iframe wrappers, use:
 
 ```text
-my-grotto-game/
-  package.json
-  src/
-    main.ts
-    game/
-    runtime/
-      grotto.ts
-  public/
-    index.html
-  tests/
-    runtime.spec.ts
-  wrapper/
-    index.html
+grotto-hosted-game-github-workflow
 ```
 
-The hosted client lives in `src/` and `public/`. The uploaded Grotto file is `wrapper/index.html`.
-
-### Hosted game client requirements
-
-The hosted client should include the runtime SDK and call it during boot:
-
-```html
-<script src="https://api.enterthegrotto.xyz/sdk/grotto-game-runtime.v1.js"></script>
-```
-
-```js
-async function boot() {
-  const grotto = await GrottoRuntime.ready({ timeoutMs: 10000 });
-  const player = await grotto.getPlayer();
-  const save = await grotto.loadSave('default', DEFAULT_STATE);
-  startGame({ player, state: save.state });
-}
-```
-
-The hosted URL must be HTTPS. Do not embed an `http://` game client inside the Grotto wrapper, because browsers will block mixed content from the HTTPS Grotto page.
-
-### Grotto wrapper file
-
-Upload this wrapper as the Grotto game zip's root `index.html`. Replace `REMOTE_GAME_URL` with the public Railway/Vercel/etc. URL for the hosted game client.
-
-```html
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>My Grotto Game</title>
-  <style>
-    html, body, #game {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      border: 0;
-      overflow: hidden;
-      background: #050510;
-    }
-  </style>
-</head>
-<body>
-  <iframe
-    id="game"
-    title="My Grotto Game"
-    sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-popups"
-    allow="fullscreen; autoplay; clipboard-read; clipboard-write; gamepad"
-    referrerpolicy="strict-origin-when-cross-origin"
-  ></iframe>
-
-  <script>
-    const REMOTE_GAME_URL = 'https://my-game.up.railway.app';
-    const iframe = document.getElementById('game');
-
-    const params = new URLSearchParams(window.location.search);
-    params.set('embedded', 'grotto');
-    iframe.src = `${REMOTE_GAME_URL}/?${params.toString()}`;
-
-    window.addEventListener('message', (event) => {
-      const message = event.data;
-      if (!message || typeof message !== 'object') return;
-
-      // Hosted client asks for Grotto runtime config.
-      if (message.type === 'grotto:runtime:hello' && event.source === iframe.contentWindow) {
-        window.parent.postMessage({ type: 'grotto:runtime:hello' }, '*');
-        return;
-      }
-
-      // Grotto player sends runtime config to wrapper; wrapper forwards to hosted client.
-      if (message.type === 'grotto:runtime') {
-        iframe.contentWindow?.postMessage(message, REMOTE_GAME_URL);
-      }
-    });
-  </script>
-</body>
-</html>
-```
-
-### GitHub/Railway workflow
-
-A normal maintenance loop becomes:
-
-1. Create a branch in the game repo.
-2. Make the game client change.
-3. Run tests locally.
-4. Open a GitHub PR.
-5. Let CI run unit tests, lint, build, and optional Playwright smoke tests.
-6. Merge to `main`.
-7. Railway auto-deploys the hosted game client.
-8. The existing Grotto wrapper iframe loads the new hosted client automatically.
-9. If something breaks, revert the GitHub commit or roll back the Railway deployment.
-
-Example `package.json` scripts:
-
-```json
-{
-  "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "test": "vitest run",
-    "lint": "eslint .",
-    "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
-  }
-}
-```
-
-Example GitHub Actions check:
-
-```yaml
-name: game-client-ci
-on:
-  pull_request:
-  push:
-    branches: [main]
-
-jobs:
-  test-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm test -- --run
-      - run: npm run build
-```
-
-### Testing the wrapper
-
-Add a small test that protects the Grotto wrapper contract:
-
-```js
-import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
-
-const wrapper = readFileSync('wrapper/index.html', 'utf8');
-
-describe('Grotto wrapper', () => {
-  it('embeds the hosted client and forwards runtime messages', () => {
-    expect(wrapper).toContain('https://my-game.up.railway.app');
-    expect(wrapper).toContain('grotto:runtime:hello');
-    expect(wrapper).toContain('grotto:runtime');
-    expect(wrapper).toContain('postMessage');
-  });
-});
-```
-
-For the hosted client, mock `window.GrottoRuntime` in unit or Playwright tests and verify boot calls `ready()`, `getPlayer()`, `loadSave()`, and `save()` where appropriate.
-
-### When not to use this pattern
-
-Avoid a remote hosted client wrapper when:
-
-- the game must be permanently playable as a fully self-contained archive
-- the creator does not control the hosted domain long term
-- the game depends on third-party scripts that may disappear
-- the wrapper cannot forward runtime messages because of sandbox/CSP restrictions
-
-For most actively maintained browser games, the wrapper pattern is the best developer experience: The Grotto owns discovery, identity, and runtime session handoff, while GitHub plus Railway/Vercel owns iteration, testing, deploys, and rollback.
+Runtime SDK still handles identity/save/event APIs. The specialist skill explains how to keep the real game client in GitHub and upload only a tiny Grotto wrapper that forwards `grotto:runtime:hello` and `grotto:runtime` between The Grotto player and the hosted iframe.
 
 ## Raw API reference
 
