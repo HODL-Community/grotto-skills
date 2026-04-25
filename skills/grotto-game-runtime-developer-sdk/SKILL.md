@@ -403,6 +403,37 @@ Recommended defaults:
 - Complex RPG/building games: show conflict UI or merge by domain-specific rules.
 - Idle games: merge by max counters where safe, never blindly add both sides unless designed for it.
 
+## Troubleshooting
+
+### `TypeError: Failed to fetch` on `session/me`
+
+Open DevTools → Network and inspect the failing request.
+
+If it says `blocked:mixed-content` and the request URL starts with `http://api.enterthegrotto.xyz/api/game-runtime/v1/session/me`, the game code is not the root cause. The runtime config was minted with an insecure `apiBaseUrl` from the platform/player layer. The platform must send:
+
+```text
+https://api.enterthegrotto.xyz/api/game-runtime/v1
+```
+
+not:
+
+```text
+http://api.enterthegrotto.xyz/api/game-runtime/v1
+```
+
+This was fixed platform-side by making the backend honor proxy/TLS headers when generating runtime config. If a player still sees it, have them fully reload/relaunch the game so the iframe receives a newly minted runtime config.
+
+Creators should not normally patch this themselves, but a temporary local workaround while testing is:
+
+```js
+const grotto = await GrottoRuntime.ready({ timeoutMs: 10000 });
+if (grotto.runtime.apiBaseUrl.startsWith('http://')) {
+  grotto.runtime.apiBaseUrl = grotto.runtime.apiBaseUrl.replace('http://', 'https://');
+}
+```
+
+Report it as a platform issue if the insecure URL reappears in fresh sessions.
+
 ## Packaging checklist
 
 Before uploading to The Grotto:
