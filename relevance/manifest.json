@@ -6,25 +6,56 @@
     {
       "name": "grotto-game-runtime-developer-sdk",
       "path": "skills/grotto-game-runtime-developer-sdk/SKILL.md",
-      "summary": "Build Grotto-hosted HTML5/WebGL games with trusted identity, cloud saves, leaderboards, runtime troubleshooting, indexer-backed token-gated unlocks, and GitHub-backed hosted-client version control/testing.",
+      "summary": "Core Grotto Runtime SDK guide for trusted identity, cloud saves, autosave, events, presence, and runtime troubleshooting. Links to specialist token-gating and hosted-client workflow skills.",
       "tags": [
         "grotto",
         "html5",
         "webgl",
         "game-dev",
+        "runtime-sdk",
         "cloud-saves",
         "leaderboards",
-        "token-gating",
-        "inventory",
-        "indexer",
-        "github",
-        "version-control",
-        "testing",
         "railway",
         "supabase"
       ],
       "public_url": "https://www.enterthegrotto.xyz/skills",
       "sdk_url": "https://api.enterthegrotto.xyz/sdk/grotto-game-runtime.v1.js",
+      "docs_url": "https://api.enterthegrotto.xyz/docs"
+    },
+    {
+      "name": "grotto-game-token-gated-inventory",
+      "path": "skills/grotto-game-token-gated-inventory/SKILL.md",
+      "summary": "Token-gate Grotto game skins, items, levels, and rewards using Runtime SDK identity, associated wallets, and indexer-backed inventory APIs.",
+      "tags": [
+        "grotto",
+        "game-dev",
+        "token-gating",
+        "inventory",
+        "indexer",
+        "nft",
+        "erc1155",
+        "erc721"
+      ],
+      "public_url": "https://www.enterthegrotto.xyz/skills",
+      "docs_url": "https://api.enterthegrotto.xyz/docs"
+    },
+    {
+      "name": "grotto-hosted-game-github-workflow",
+      "path": "skills/grotto-hosted-game-github-workflow/SKILL.md",
+      "summary": "Maintain Grotto games with GitHub PRs, CI tests, Railway/Vercel hosted clients, and a small Grotto iframe wrapper for fast updates and rollback.",
+      "tags": [
+        "grotto",
+        "game-dev",
+        "github",
+        "version-control",
+        "testing",
+        "ci",
+        "railway",
+        "vercel",
+        "iframe",
+        "wrapper"
+      ],
+      "public_url": "https://www.enterthegrotto.xyz/skills",
       "docs_url": "https://api.enterthegrotto.xyz/docs"
     }
   ]
