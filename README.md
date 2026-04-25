@@ -19,6 +19,18 @@ Use this skill when building Grotto-hosted HTML5 or WebGL games that need:
 - presence and future multiplayer hooks
 - Railway or Supabase-backed custom game services
 
+### Grotto Game Token-Gated Inventory
+
+Path: `skills/grotto-game-token-gated-inventory/SKILL.md`
+
+Use this skill when a Grotto game needs NFT/ERC1155/ERC721 ownership checks, associated wallet inventory lookup, token-gated skins, game-pass unlocks, asset unlocks, or server-authoritative entitlements.
+
+### Grotto Hosted Game GitHub Workflow
+
+Path: `skills/grotto-hosted-game-github-workflow/SKILL.md`
+
+Use this skill when a Grotto game should be maintained through GitHub PRs, CI tests, hosted Railway/Vercel clients, and a small Grotto iframe wrapper for quick updates and rollback.
+
 Public SDK URL:
 
 ```html
@@ -48,6 +60,12 @@ skills/
 assets/
   grotto-game-runtime-developer-sdk/
     grotto-runtime-sdk-ad-redo.png
+  grotto-game-token-gated-inventory/
+    grotto-game-token-gated-inventory-ad.png
+    grotto-game-token-gated-inventory-ad.svg
+  grotto-hosted-game-github-workflow/
+    grotto-hosted-game-github-workflow-ad.png
+    grotto-hosted-game-github-workflow-ad.svg
 relevance/
   manifest.json
 ```
