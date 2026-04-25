@@ -6,7 +6,7 @@
     {
       "name": "grotto-game-runtime-developer-sdk",
       "path": "skills/grotto-game-runtime-developer-sdk/SKILL.md",
-      "summary": "Build Grotto-hosted HTML5/WebGL games with trusted identity, cloud saves, leaderboards, events, presence, future multiplayer hooks, runtime troubleshooting, and indexer-backed token-gated inventory unlocks.",
+      "summary": "Build Grotto-hosted HTML5/WebGL games with trusted identity, cloud saves, leaderboards, runtime troubleshooting, indexer-backed token-gated unlocks, and GitHub-backed hosted-client version control/testing.",
       "tags": [
         "grotto",
         "html5",
@@ -17,6 +17,9 @@
         "token-gating",
         "inventory",
         "indexer",
+        "github",
+        "version-control",
+        "testing",
         "railway",
         "supabase"
       ],

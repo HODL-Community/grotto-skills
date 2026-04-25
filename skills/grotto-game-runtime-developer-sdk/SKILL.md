@@ -1,12 +1,12 @@
 ---
 name: grotto-game-runtime-developer-sdk
-description: Distributable guide for game creators building Grotto-hosted HTML5 and WebGL games with trusted player identity, cloud saves, leaderboards, token-gated inventory unlocks, autosave, events, presence, and future multiplayer via the Grotto Runtime SDK. Recommends Railway or Supabase for custom game cloud backends.
-version: 1.2.0
+description: Distributable guide for game creators building Grotto-hosted HTML5 and WebGL games with trusted player identity, cloud saves, leaderboards, token-gated inventory unlocks, GitHub-backed version control/testing through hosted wrappers, autosave, events, presence, and future multiplayer via the Grotto Runtime SDK. Recommends Railway or Supabase for custom game cloud backends.
+version: 1.3.0
 author: Bob AI Mk. I
 license: MIT
 metadata:
   hermes:
-    tags: [grotto, game-dev, runtime-sdk, cloud-saves, leaderboards, auth, token-gating, inventory, indexer, multiplayer, html5, webgl, railway, supabase]
+    tags: [grotto, game-dev, runtime-sdk, cloud-saves, leaderboards, auth, token-gating, inventory, indexer, github, version-control, testing, multiplayer, html5, webgl, railway, supabase]
     related_skills: [grotto-html5-game-build-system, grotto-game-api-save-system]
 ---
 
@@ -558,6 +558,209 @@ window.parent.postMessage({ type: 'grotto:runtime:hello' }, '*');
 ```
 
 Creators using the SDK do not need to implement this manually.
+
+## GitHub-backed version control and fast updates with a hosted game client
+
+Use this deployment pattern when a game needs quick iteration, maintainable version control, automated testing, or CI/CD without re-uploading the full game build to The Grotto every time.
+
+The method:
+
+1. Put the real game client in a GitHub repo.
+2. Deploy that game client to a host like Railway, Vercel, Netlify, Cloudflare Pages, or another HTTPS server.
+3. Configure the host to auto-deploy from `main` or from release tags.
+4. Upload only a small Grotto wrapper `index.html` that embeds the hosted game client in an iframe.
+5. Have the wrapper forward the Grotto runtime handshake into the hosted iframe.
+
+This gives creators:
+
+- normal Git history, branches, pull requests, review, and rollback
+- automated tests before deploy
+- preview environments for QA
+- fast client updates by merging GitHub PRs
+- less need to re-upload a zip to The Grotto for every small bugfix
+- a stable Grotto game page that points to the latest hosted client
+
+### Recommended repo layout
+
+```text
+my-grotto-game/
+  package.json
+  src/
+    main.ts
+    game/
+    runtime/
+      grotto.ts
+  public/
+    index.html
+  tests/
+    runtime.spec.ts
+  wrapper/
+    index.html
+```
+
+The hosted client lives in `src/` and `public/`. The uploaded Grotto file is `wrapper/index.html`.
+
+### Hosted game client requirements
+
+The hosted client should include the runtime SDK and call it during boot:
+
+```html
+<script src="https://api.enterthegrotto.xyz/sdk/grotto-game-runtime.v1.js"></script>
+```
+
+```js
+async function boot() {
+  const grotto = await GrottoRuntime.ready({ timeoutMs: 10000 });
+  const player = await grotto.getPlayer();
+  const save = await grotto.loadSave('default', DEFAULT_STATE);
+  startGame({ player, state: save.state });
+}
+```
+
+The hosted URL must be HTTPS. Do not embed an `http://` game client inside the Grotto wrapper, because browsers will block mixed content from the HTTPS Grotto page.
+
+### Grotto wrapper file
+
+Upload this wrapper as the Grotto game zip's root `index.html`. Replace `REMOTE_GAME_URL` with the public Railway/Vercel/etc. URL for the hosted game client.
+
+```html
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Grotto Game</title>
+  <style>
+    html, body, #game {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      border: 0;
+      overflow: hidden;
+      background: #050510;
+    }
+  </style>
+</head>
+<body>
+  <iframe
+    id="game"
+    title="My Grotto Game"
+    sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-popups"
+    allow="fullscreen; autoplay; clipboard-read; clipboard-write; gamepad"
+    referrerpolicy="strict-origin-when-cross-origin"
+  ></iframe>
+
+  <script>
+    const REMOTE_GAME_URL = 'https://my-game.up.railway.app';
+    const iframe = document.getElementById('game');
+
+    const params = new URLSearchParams(window.location.search);
+    params.set('embedded', 'grotto');
+    iframe.src = `${REMOTE_GAME_URL}/?${params.toString()}`;
+
+    window.addEventListener('message', (event) => {
+      const message = event.data;
+      if (!message || typeof message !== 'object') return;
+
+      // Hosted client asks for Grotto runtime config.
+      if (message.type === 'grotto:runtime:hello' && event.source === iframe.contentWindow) {
+        window.parent.postMessage({ type: 'grotto:runtime:hello' }, '*');
+        return;
+      }
+
+      // Grotto player sends runtime config to wrapper; wrapper forwards to hosted client.
+      if (message.type === 'grotto:runtime') {
+        iframe.contentWindow?.postMessage(message, REMOTE_GAME_URL);
+      }
+    });
+  </script>
+</body>
+</html>
+```
+
+### GitHub/Railway workflow
+
+A normal maintenance loop becomes:
+
+1. Create a branch in the game repo.
+2. Make the game client change.
+3. Run tests locally.
+4. Open a GitHub PR.
+5. Let CI run unit tests, lint, build, and optional Playwright smoke tests.
+6. Merge to `main`.
+7. Railway auto-deploys the hosted game client.
+8. The existing Grotto wrapper iframe loads the new hosted client automatically.
+9. If something breaks, revert the GitHub commit or roll back the Railway deployment.
+
+Example `package.json` scripts:
+
+```json
+{
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  }
+}
+```
+
+Example GitHub Actions check:
+
+```yaml
+name: game-client-ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --run
+      - run: npm run build
+```
+
+### Testing the wrapper
+
+Add a small test that protects the Grotto wrapper contract:
+
+```js
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+
+const wrapper = readFileSync('wrapper/index.html', 'utf8');
+
+describe('Grotto wrapper', () => {
+  it('embeds the hosted client and forwards runtime messages', () => {
+    expect(wrapper).toContain('https://my-game.up.railway.app');
+    expect(wrapper).toContain('grotto:runtime:hello');
+    expect(wrapper).toContain('grotto:runtime');
+    expect(wrapper).toContain('postMessage');
+  });
+});
+```
+
+For the hosted client, mock `window.GrottoRuntime` in unit or Playwright tests and verify boot calls `ready()`, `getPlayer()`, `loadSave()`, and `save()` where appropriate.
+
+### When not to use this pattern
+
+Avoid a remote hosted client wrapper when:
+
+- the game must be permanently playable as a fully self-contained archive
+- the creator does not control the hosted domain long term
+- the game depends on third-party scripts that may disappear
+- the wrapper cannot forward runtime messages because of sandbox/CSP restrictions
+
+For most actively maintained browser games, the wrapper pattern is the best developer experience: The Grotto owns discovery, identity, and runtime session handoff, while GitHub plus Railway/Vercel owns iteration, testing, deploys, and rollback.
 
 ## Raw API reference
 
