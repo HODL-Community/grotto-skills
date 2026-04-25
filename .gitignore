@@ -1,0 +1,11 @@
+# OS
+.DS_Store
+
+# local env/secrets
+.env
+.env.*
+!.env.example
+
+# temporary files
+*.log
+.tmp/

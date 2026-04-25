@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Grotto Runtime Minimal Game</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #09090b; color: #f4f4f5; display: grid; place-items: center; min-height: 100vh; margin: 0; }
+    main { display: grid; gap: 1rem; text-align: center; }
+    button { font: inherit; font-size: 1.25rem; padding: 1rem 1.5rem; border-radius: 0.75rem; border: 1px solid #f97316; background: #18181b; color: #fff; cursor: pointer; }
+    #status { color: #a1a1aa; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Grotto Runtime Minimal Game</h1>
+    <button id="click">Coins: <span id="coins">0</span></button>
+    <div id="status">Booting...</div>
+  </main>
+
+  <script src="https://api.enterthegrotto.xyz/sdk/grotto-game-runtime.v1.js"></script>
+  <script>
+    const DEFAULT_STATE = { coins: 0 };
+    const LOCAL_KEY = 'grotto_minimal_runtime_game_local';
+
+    let state = { ...DEFAULT_STATE };
+    let autosave = null;
+
+    function render() {
+      document.getElementById('coins').textContent = state.coins;
+    }
+
+    function setStatus(text) {
+      document.getElementById('status').textContent = text;
+    }
+
+    function loadLocalState() {
+      try {
+        const raw = localStorage.getItem(LOCAL_KEY);
+        return raw ? { ...DEFAULT_STATE, ...JSON.parse(raw) } : { ...DEFAULT_STATE };
+      } catch {
+        return { ...DEFAULT_STATE };
+      }
+    }
+
+    function saveLocalState() {
+      try { localStorage.setItem(LOCAL_KEY, JSON.stringify(state)); } catch {}
+    }
+
+    async function boot() {
+      try {
+        const grotto = await GrottoRuntime.ready({ timeoutMs: 10000 });
+        const me = await grotto.getPlayer();
+        setStatus(`Signed in as ${me.player.displayName || me.player.walletAddress || 'Grotto player'}`);
+
+        autosave = grotto.createAutosave({
+          slot: 'default',
+          defaultState: DEFAULT_STATE,
+          getState: () => state,
+          applyState: (nextState) => {
+            state = { ...DEFAULT_STATE, ...nextState };
+            render();
+          },
+          intervalMs: 30000,
+          onSaved: ({ version }) => setStatus(`Saved v${version}`),
+          onError: () => setStatus('Offline save cached'),
+          onConflict: () => setStatus('Save conflict detected'),
+        });
+
+        await autosave.start();
+      } catch (error) {
+        console.warn('[Game] Grotto runtime unavailable, using local mode:', error);
+        state = loadLocalState();
+        setStatus('Local mode');
+      }
+
+      render();
+    }
+
+    document.getElementById('click').addEventListener('click', () => {
+      state.coins += 1;
+      render();
+      if (autosave) {
+        autosave.markDirty();
+      } else {
+        saveLocalState();
+      }
+    });
+
+    window.addEventListener('pagehide', () => {
+      if (!autosave) saveLocalState();
+    });
+
+    boot();
+  </script>
+</body>
+</html>

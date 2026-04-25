@@ -1,0 +1,24 @@
+{
+  "name": "grotto-skills",
+  "description": "Public Grotto developer skills for HTML5/WebGL game creators.",
+  "visibility": "public",
+  "skills": [
+    {
+      "name": "grotto-game-runtime-developer-sdk",
+      "path": "skills/grotto-game-runtime-developer-sdk/SKILL.md",
+      "summary": "Build Grotto-hosted HTML5/WebGL games with trusted identity, cloud saves, leaderboards, events, presence, and future multiplayer hooks.",
+      "tags": [
+        "grotto",
+        "html5",
+        "webgl",
+        "game-dev",
+        "cloud-saves",
+        "leaderboards",
+        "railway",
+        "supabase"
+      ],
+      "public_url": "https://www.enterthegrotto.xyz/skills",
+      "sdk_url": "https://api.enterthegrotto.xyz/sdk/grotto-game-runtime.v1.js"
+    }
+  ]
+}
