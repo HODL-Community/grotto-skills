@@ -18,7 +18,8 @@
         "supabase"
       ],
       "public_url": "https://www.enterthegrotto.xyz/skills",
-      "sdk_url": "https://api.enterthegrotto.xyz/sdk/grotto-game-runtime.v1.js"
+      "sdk_url": "https://api.enterthegrotto.xyz/sdk/grotto-game-runtime.v1.js",
+      "docs_url": "https://api.enterthegrotto.xyz/docs"
     }
   ]
 }

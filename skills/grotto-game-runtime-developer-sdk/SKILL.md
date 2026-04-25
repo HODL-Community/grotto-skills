@@ -95,6 +95,14 @@ A backend-served example exists at:
 https://api.enterthegrotto.xyz/sdk/grotto-game-runtime-example.html
 ```
 
+Live Grotto API docs are available at:
+
+```text
+https://api.enterthegrotto.xyz/docs
+```
+
+Treat those docs as the reference for current backend routes. When this skill and the live docs disagree, record the drift and update whichever side is stale.
+
 For local development outside The Grotto, the SDK should fail gracefully or use local fallback. Design your game so it can still run without cloud auth during local testing.
 
 ## Minimal integration
